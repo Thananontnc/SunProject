@@ -31,10 +31,10 @@ class WaterTank {
     pinMode(_dout, INPUT_PULLUP);  // disconnected sensor reads "not ready" -> percent() = -1
     Cal c;
     EEPROM.get(_addr, c);
-    if (valid(c)) {
-      _empty = c.empty;
-      _full = c.full;
-      _calibrated = true;
+    if (c.magic == MAGIC) {  // load even a half-done calibration so C,SHOW is correct
+      if (c.flags & 1) _empty = c.empty;
+      if (c.flags & 2) _full = c.full;
+      _calibrated = valid(c);
     }
   }
 
