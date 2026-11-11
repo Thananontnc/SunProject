@@ -15,6 +15,12 @@ server/data/
 # Trained models / training output (large files - copy them by hand)
 server/models/*
 !server/models/README.md
+# trained fire model (small, needed on the Pi)
+!server/models/fire_ncnn_model/
+server/models/fire_ncnn_model/*
+!server/models/fire_ncnn_model/metadata.yaml
+!server/models/fire_ncnn_model/model.ncnn.bin
+!server/models/fire_ncnn_model/model.ncnn.param
 training/runs/
 training/fire.yaml
 training/fire_ncnn_model/
