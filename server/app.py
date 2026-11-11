@@ -19,6 +19,7 @@ from datetime import datetime
 import cv2
 from flask import Flask, Response, abort, jsonify, request, send_from_directory
 
+import arduino_bridge
 import config
 import fire_detector
 from camera import Camera
@@ -57,6 +58,9 @@ state = {
     "fps": 0.0,
     "camera": None,
     "detector": None,
+    "arduino": None,
+    "fire_box": None,
+    "frame_size": (config.FRAME_WIDTH, config.FRAME_HEIGHT),
     "infer_ms": 0.0,
     "robot_last_seen": None,
     "simulated": config.SIMULATE,
@@ -188,9 +192,11 @@ def camera_loop():
 
         now = time.time()
         with lock:
+            state["frame_size"] = (frame.shape[1], frame.shape[0])
             if dets:
                 state["fire_confidence"] = dets[0][4]
                 state["fire_position"] = fire_detector.position_of(dets[0], frame.shape[1])
+                state["fire_box"] = dets[0][:5]
             if not state["fire_detected"] and hit_streak >= config.FIRE_CONFIRM_FRAMES:
                 state["fire_detected"] = True
                 active_fire = add_event("FIRE", frame)
@@ -198,6 +204,7 @@ def camera_loop():
                 state["fire_detected"] = False
                 state["fire_confidence"] = 0.0
                 state["fire_position"] = None
+                state["fire_box"] = None
                 if active_fire:
                     active_fire["duration_s"] = int(now - active_fire["_start"])
                     save_history()
@@ -210,7 +217,7 @@ def camera_loop():
                 add_event("PATROL", frame)
 
             state["infer_ms"] = detector.infer_ms
-            if config.SIMULATE:
+            if config.SIMULATE and not state["arduino"]:  # real Arduino data wins over simulation
                 simulate_robot(now - last)
             last = now
 
@@ -271,6 +278,8 @@ def api_status():
     with lock:
         s = dict(state)
     seen = s.pop("robot_last_seen")
+    for k in ("fire_box", "frame_size"):
+        s.pop(k, None)
     s["robot_online"] = seen is not None and time.time() - seen < 10
     for k in ("battery", "water_level", "distance_m"):
         if s[k] is not None:
@@ -319,5 +328,7 @@ def api_config():
 
 if __name__ == "__main__":
     threading.Thread(target=camera_loop, daemon=True).start()
+    if config.SERIAL_PORT != "none":
+        arduino_bridge.ArduinoBridge(state, lock, ROBOT_STATUSES)
     print(f"Server on port {config.PORT}. In the app, enter http://<pi-ip>:{config.PORT}")
     app.run(host=config.HOST, port=config.PORT, threaded=True)

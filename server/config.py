@@ -36,5 +36,9 @@ MAX_HISTORY = int(os.getenv("MAX_HISTORY", "300"))
 LOW_WATER_PERCENT = int(os.getenv("LOW_WATER_PERCENT", "20"))
 LOW_BATTERY_PERCENT = int(os.getenv("LOW_BATTERY_PERCENT", "20"))
 
+# Arduino serial link: "auto" finds /dev/ttyACM* etc, "none" disables, or a path like /dev/ttyACM0
+SERIAL_PORT = os.getenv("SERIAL_PORT", "auto")
+SERIAL_BAUD = int(os.getenv("SERIAL_BAUD", "115200"))
+
 # SIMULATE=1 fakes battery/water/distance/pump so you can test the app without the robot.
 SIMULATE = os.getenv("SIMULATE", "0") == "1"
