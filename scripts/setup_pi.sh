@@ -41,26 +41,28 @@ fi
 sudo -v   # ask for the password once, up front
 
 if [ "$DO_APT" -eq 1 ]; then
-  step "1/7 Installing system packages (apt)"
+  step "1/8 Installing system packages (apt)"
   sudo apt-get update -y
   sudo apt-get install -y git python3-venv python3-picamera2 python3-opencv \
     python3-flask python3-numpy python3-serial rpicam-apps
 fi
 
-step "2/7 Getting the project code -> $REPO_DIR"
+step "2/8 Getting the project code -> $REPO_DIR"
 if [ -d "$REPO_DIR/.git" ]; then
   git -C "$REPO_DIR" pull --ff-only || warn "git pull failed (local changes?) - keeping current code"
 else
   git clone "$REPO_URL" "$REPO_DIR"
 fi
 
-step "3/7 Python environment -> $VENV"
+step "3/8 Python environment -> $VENV"
 [ -x "$VENV/bin/python" ] || python3 -m venv --system-site-packages "$VENV"
-# ncnn runs the YOLO fire model (small download, no PyTorch). Retries help on flaky WiFi.
-"$VENV/bin/pip" install --quiet --retries 10 --timeout 120 ncnn
+# Everything in server/requirements.txt (apt already gave flask/numpy/opencv/serial, so pip
+# only adds what's missing, e.g. ncnn for the YOLO model). New entries there get installed
+# automatically on the next run. Retries help on flaky WiFi.
+"$VENV/bin/pip" install --quiet --retries 10 --timeout 120 -r "$REPO_DIR/server/requirements.txt"
 "$VENV/bin/python" -c "import flask, cv2, numpy, serial, ncnn, picamera2; print('python packages OK')"
 
-step "4/7 Camera setup"
+step "4/8 Camera setup"
 if [ "$REV13" -eq 1 ] && [ -f "$BOOT_CFG" ]; then
   if ! grep -q '^dtoverlay=ov5647' "$BOOT_CFG"; then
     sudo sed -i 's/^camera_auto_detect=1/camera_auto_detect=0/' "$BOOT_CFG"
@@ -74,12 +76,21 @@ else
 fi
 sudo usermod -aG video,dialout "$APP_USER"   # camera + Arduino USB access
 
-step "5/7 SSH: don't block computers on the local network after many quick logins"
+step "5/8 SSH: don't block computers on the local network after many quick logins"
 echo "PerSourcePenaltyExemptList 192.168.0.0/16,10.0.0.0/8,172.16.0.0/12" \
   | sudo tee /etc/ssh/sshd_config.d/lan.conf >/dev/null
 sudo systemctl reload ssh 2>/dev/null || sudo systemctl restart ssh || true
 
-step "6/7 Auto-start service (fire-monitor)"
+step "6/8 WiFi: turn off power saving (stops the connection dropping)"
+if [ -d /etc/NetworkManager/conf.d ]; then
+  printf '[connection]\nwifi.powersave = 2\n' \
+    | sudo tee /etc/NetworkManager/conf.d/wifi-powersave-off.conf >/dev/null
+  echo "WiFi power saving off (active after reboot)"
+else
+  echo "NetworkManager not found - skipped"
+fi
+
+step "7/8 Auto-start service (fire-monitor)"
 if [ ! -f "$ENV_FILE" ]; then
   echo "SIMULATE=$SIMULATE" > "$ENV_FILE"
 elif [ "$SIMULATE" -eq 1 ]; then
@@ -106,7 +117,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable fire-monitor >/dev/null
 sudo systemctl restart fire-monitor
 
-step "7/7 Checking"
+step "8/8 Checking"
 ok=0
 for _ in $(seq 1 20); do
   if curl -fs -m 2 http://127.0.0.1:5000/api/status >/tmp/fire-status.json; then ok=1; break; fi
@@ -121,6 +132,20 @@ print(f"  camera   : {d.get('camera')}")
 print(f"  detector : {d.get('detector')}")
 print(f"  arduino  : {d.get('arduino') or 'not connected'}")
 PY
+  if ! grep -q '"detector": *"yolo"' /tmp/fire-status.json; then
+    warn "YOLO model not loaded (using the simple colour detector). Check $REPO_DIR/server/models/fire_ncnn_model"
+  fi
+  TEMP="$(vcgencmd measure_temp 2>/dev/null | grep -oE '[0-9]+' | head -1 || true)"
+  THROTTLED="$(vcgencmd get_throttled 2>/dev/null | cut -d= -f2 || true)"
+  echo "  cpu temp : ${TEMP:-?} C"
+  if [ -n "$TEMP" ] && [ "$TEMP" -ge 75 ]; then
+    warn "Pi is hot (${TEMP} C). The AI runs all the time - fit the Raspberry Pi 5 Active Cooler (fan)."
+  elif [ -n "$THROTTLED" ] && [ "$THROTTLED" != "0x0" ]; then
+    warn "Pi slowed down because of heat or low power since boot (get_throttled=$THROTTLED). Check the fan and the 5V 5A power supply."
+  fi
+  if ! ls /sys/devices/platform/cooling_fan/hwmon/*/fan1_input >/dev/null 2>&1; then
+    warn "No fan found on the Pi 5 fan connector."
+  fi
   if rpicam-hello --list-cameras 2>&1 | grep -q "Available cameras"; then
     echo "  pi camera: detected"
   else
