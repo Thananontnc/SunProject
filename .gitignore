@@ -1,0 +1,25 @@
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv*/
+venv/
+
+# Server runtime data (snapshots, history)
+server/data/
+
+# Trained models / training output (large files - copy them by hand)
+server/models/*
+!server/models/README.md
+training/runs/
+training/fire.yaml
+training/fire_ncnn_model/
+training/*.zip
+*.pt
+
+# Arduino build output
+arduino/**/build/
