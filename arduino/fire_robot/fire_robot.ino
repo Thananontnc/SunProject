@@ -12,11 +12,11 @@
 //
 // ---------------- Wiring / การต่อสาย ----------------
 //   L298N  ENA -> D5 (PWM)   IN1 -> D7   IN2 -> D8     left motors  (2 motors on OUT1/OUT2)
-//   L298N  ENB -> D6 (PWM)   IN3 -> D9   IN4 -> D10    right motors (2 motors on OUT3/OUT4)
+//   L298N  ENB -> D6 (PWM)   IN3 -> D4   IN4 -> D10    right motors (2 motors on OUT3/OUT4)
 //          Remove the ENA/ENB jumpers so the PWM speed control works.
 //          ถอดจัมเปอร์ ENA/ENB ออก ไม่งั้นคุมความเร็วไม่ได้
 //   HC-SR04 TRIG -> D11   ECHO -> D12   VCC -> 5V
-//   Relay IN -> D4 (pump)                          most relay modules are active-LOW
+//   Relay IN -> D9 (pump)                          most relay modules are active-LOW
 //   HX711  DT -> A2   SCK -> A3                    water tank (WaterTank.h)
 //   A4/A5 left free for an I2C heat sensor (MLX90614 / AMG8833)
 //   All GNDs together: Arduino, L298N, motor battery, relay.
@@ -37,11 +37,11 @@ const uint8_t PIN_ENA = 5;
 const uint8_t PIN_IN1 = 7;
 const uint8_t PIN_IN2 = 8;
 const uint8_t PIN_ENB = 6;
-const uint8_t PIN_IN3 = 9;
+const uint8_t PIN_IN3 = 4;
 const uint8_t PIN_IN4 = 10;
 const uint8_t PIN_TRIG = 11;
 const uint8_t PIN_ECHO = 12;
-const uint8_t PIN_RELAY = 4;
+const uint8_t PIN_RELAY = 9;
 
 // ---------------- Settings to tune / ค่าที่ต้องปรับ ----------------
 const bool LEFT_REVERSED = false;    // flip if the left wheels spin backward on T,F
