@@ -91,6 +91,16 @@ Typed by a person, not sent by the Pi. Code: `arduino/water_tank/WaterTank.h`.
 | `C,SHOW` | print the calibration and the current water % | แสดงค่าคาลิเบรตและ % น้ำตอนนี้ |
 | `C,RAW` | turn raw readings on/off (for testing) | เปิด/ปิดการพิมพ์ค่าดิบ (ไว้ทดสอบ) |
 
+### `T` — bench test (Serial Monitor only) / ทดสอบบนโต๊ะ (พิมพ์ใน Serial Monitor)
+Runs for 1 second, only when the Pi is not sending. Code: `arduino/fire_robot/fire_robot.ino`.
+ทำงาน 1 วินาที และใช้ได้เฉพาะตอนที่ Pi ไม่ได้ส่งข้อความ โค้ดอยู่ที่ `arduino/fire_robot/fire_robot.ino`
+
+| Command | Meaning (EN) | ความหมาย (TH) |
+|---|---|---|
+| `T,F` / `T,B` | drive forward / backward | วิ่งไปข้างหน้า / ถอยหลัง |
+| `T,L` / `T,R` | turn left / right in place | หมุนซ้าย / ขวา อยู่กับที่ |
+| `T,P` | pump on | เปิดปั๊ม |
+
 The `water` field in `S` comes from this sensor (load cell + HX711 on pins A2/A3).
 ค่า `water` ในข้อความ `S` มาจากเซนเซอร์นี้ (Load cell + HX711 ต่อที่ขา A2/A3)
 
@@ -129,6 +139,9 @@ PATROL ──(F received)──► FORWARD ──(dist < 60cm)──► APPROACH
 ## 5. Test without the other side / ทดสอบโดยไม่ต้องรออีกฝั่ง
 
 **Arduino side (no Pi needed) / ฝั่ง Arduino (ไม่ต้องมี Pi):**
+Starter sketch: `arduino/fire_robot/` (motors, ultrasonic, pump, water sensor, all of this document). Pins and speeds are at the top of the file.
+โค้ดตั้งต้น: `arduino/fire_robot/` (มอเตอร์, Ultrasonic, ปั๊ม, เซนเซอร์น้ำ ตามเอกสารนี้ทั้งหมด) ขาและความเร็วอยู่ด้านบนของไฟล์
+
 Open Arduino IDE → Serial Monitor → 115200 baud, "Newline". Type the messages by hand:
 เปิด Arduino IDE → Serial Monitor → 115200 baud, เลือก "Newline" แล้วพิมพ์ข้อความเองได้เลย
 ```
