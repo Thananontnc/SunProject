@@ -1,0 +1,22 @@
+# systemd service: starts the fire monitor server on boot and restarts it if it crashes.
+# Install (on the Pi):
+#   sudo cp ~/SunProject/server/fire-monitor.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now fire-monitor
+# Settings (e.g. SIMULATE=1, ROTATE_180=1): edit ~/SunProject/server/fire-monitor.env
+#   then: sudo systemctl restart fire-monitor
+# Logs: journalctl -u fire-monitor -f
+[Unit]
+Description=Fire robot monitor server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=thananon
+WorkingDirectory=/home/thananon/SunProject/server
+EnvironmentFile=-/home/thananon/SunProject/server/fire-monitor.env
+ExecStart=/home/thananon/venv/bin/python -u app.py
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -139,23 +139,15 @@ Unplug the Arduino from the Pi before uploading code.
 ## Step 7: Start the server automatically on boot 🍓
 
 ```bash
-sudo tee /etc/systemd/system/fire-monitor.service >/dev/null <<'EOF'
-[Unit]
-Description=Fire robot monitor
-After=network-online.target
-[Service]
-WorkingDirectory=/home/pi/SunProject/server
-ExecStart=/home/pi/venv/bin/python app.py
-Restart=always
-User=pi
-[Install]
-WantedBy=multi-user.target
-EOF
+sudo cp ~/SunProject/server/fire-monitor.service /etc/systemd/system/
+sudo systemctl daemon-reload
 sudo systemctl enable --now fire-monitor
-sudo systemctl status fire-monitor        # should be "active (running)"
-journalctl -u fire-monitor -f             # live log (Ctrl+C to exit)
+systemctl status fire-monitor          # should be "active (running)"
+journalctl -u fire-monitor -f          # live log (Ctrl+C to exit)
 ```
-After this, the server starts by itself whenever the Pi powers on.
+- The server now starts on boot and restarts itself if it crashes.
+- Settings go in `~/SunProject/server/fire-monitor.env` (see `fire-monitor.env.example`), followed by `sudo systemctl restart fire-monitor`.
+- The service file assumes the user `thananon` and the venv at `~/venv`. Edit `fire-monitor.service` if yours are different.
 
 ---
 

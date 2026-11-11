@@ -29,3 +29,6 @@ training/*.zip
 
 # Arduino build output
 arduino/**/build/
+
+# Pi-specific server settings
+server/fire-monitor.env
