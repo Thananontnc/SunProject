@@ -6,6 +6,26 @@ Repo: https://github.com/Thananontnc/SunProject
 
 ---
 
+## ⚡ Quick setup on a new SD card (one command)
+
+1. 💻 **Raspberry Pi Imager**: choose Raspberry Pi 5 and **Raspberry Pi OS (64-bit)**. In the OS customisation settings, set:
+   - a hostname (e.g. `pitest`), username and password
+   - your **WiFi** name and password
+   - **Services → Enable SSH** (use password authentication)
+2. Plug in the camera (**Pi 5 cable**, power off), insert the SD card and power on. Wait about 2 minutes.
+3. 💻 `ssh <user>@<hostname>.local`, then on the Pi 🍓 run:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/Thananontnc/SunProject/main/scripts/setup_pi.sh | bash -s -- --rev13
+   ```
+   (`--rev13` is for the Pi Camera Rev 1.3. Leave it out for Camera Module 3.)
+4. Type your password once and wait about 5–10 minutes. It ends with `DONE` and the address to enter in the app.
+5. With `--rev13`, reboot once: `sudo reboot`.
+
+The script installs everything, downloads the code and the trained fire model, and sets up auto-start and the SSH fix. It's safe to run again later to update.
+The manual steps below do the same thing by hand.
+
+---
+
 ## Step 0: Things you need
 
 - Raspberry Pi 5 (4GB), a microSD card (32GB+), and a **5V 5A USB-C** power supply

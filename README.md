@@ -2,6 +2,11 @@
 
 **New here? Follow [docs/STEP_BY_STEP.md](docs/STEP_BY_STEP.md).**
 
+**New SD card, quick setup** (on the Pi):
+```bash
+curl -fsSL https://raw.githubusercontent.com/Thananontnc/SunProject/main/scripts/setup_pi.sh | bash -s -- --rev13
+```
+
 A monitor-only mobile app for an autonomous fire-fighting robot. The robot drives itself, so the app has no control buttons.
 
 ```
