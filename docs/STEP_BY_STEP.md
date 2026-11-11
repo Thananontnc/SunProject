@@ -43,7 +43,7 @@ cd ~
 git clone https://github.com/Thananontnc/SunProject.git
 cd SunProject/server
 python3 -m venv --system-site-packages ~/venv     # venv that can still see picamera2 from apt
-~/venv/bin/pip install ultralytics ncnn            # for the YOLO model (takes a few minutes)
+~/venv/bin/pip install flask opencv-python-headless ncnn   # ncnn runs the YOLO model (small, no PyTorch)
 ```
 
 Test it with fake robot data:

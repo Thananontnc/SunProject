@@ -4,6 +4,7 @@ pyserial
 # On Raspberry Pi install OpenCV + Picamera2 with apt instead (see README):
 #   sudo apt install -y python3-opencv python3-picamera2
 opencv-python-headless; platform_machine != "aarch64" and platform_machine != "armv7l"
-# Only needed for the YOLO detector:
-ultralytics
+# YOLO detector (runs the NCNN model directly, no PyTorch needed):
 ncnn
+# Optional, only to load .pt models or other export formats:
+# ultralytics

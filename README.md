@@ -36,7 +36,7 @@ rpicam-hello -t 2000        # check camera works (older OS: libcamera-hello)
 git clone https://github.com/Thananontnc/SunProject.git
 cd SunProject/server
 python3 -m venv --system-site-packages ~/venv    # keeps access to picamera2 from apt
-~/venv/bin/pip install ultralytics ncnn           # only needed for the YOLO model
+~/venv/bin/pip install flask opencv-python-headless ncnn   # ncnn runs the YOLO model, no PyTorch needed
 ~/venv/bin/python app.py    # serves on port 5000
 hostname -I                 # note the Pi IP, e.g. 192.168.1.42
 ```
@@ -105,7 +105,7 @@ This needs a free Expo account. Plain HTTP to the Pi is already allowed in `app.
 
 1. Open `training/train_fire_yolo.ipynb` in Google Colab (File → Upload notebook) and set the runtime to a T4 GPU.
 2. Run all the cells. They download the D-Fire dataset, train YOLO26n, check accuracy and export to NCNN.
-3. On the Pi, unzip `fire_ncnn_model.zip` into `server/models/`. `ultralytics` and `ncnn` are already installed in `~/venv` from step 1.
+3. On the Pi, unzip `fire_ncnn_model.zip` into `server/models/`. `ncnn` is already installed in `~/venv` from step 1 (PyTorch is not needed on the Pi).
 4. Restart the server. The log shows `[detector] YOLO model ...` and the app's Camera tab shows "Detector: YOLO AI".
 
 With no model file, the server falls back to the colour detector by itself. Settings: `YOLO_IMGSZ` (must match the export size, default 320), `FIRE_CLASSES=fire,smoke` (also alert on smoke), and `DETECTOR=color|yolo|auto`.

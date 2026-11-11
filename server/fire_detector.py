@@ -1,8 +1,9 @@
 """Fire detection.
 
-Two backends:
+Backends:
   * YOLO  - used automatically when a trained model exists at config.YOLO_MODEL
-            (e.g. models/fire_ncnn_model exported from the Colab notebook).
+            (e.g. models/fire_ncnn_model). NCNN exports run with only the small
+            `ncnn` package (NcnnBackend); ultralytics is a fallback for other formats.
   * color - OpenCV colour rules. Fast, no model, but fooled by orange lights.
             Used when no model is found or ultralytics isn't installed.
 
@@ -88,10 +89,97 @@ class YoloBackend:
         return out
 
 
+def _read_metadata(model_dir):
+    """Class names + image size from Ultralytics metadata.yaml (no yaml lib needed)."""
+    names, imgsz, section = {}, None, None
+    with open(os.path.join(model_dir, "metadata.yaml"), encoding="utf-8") as f:
+        for line in f:
+            s = line.rstrip()
+            if not s:
+                continue
+            if not s.startswith(" ") and not s.startswith("-"):
+                section = s.split(":", 1)[0]
+                continue
+            if section == "names" and ":" in s:
+                k, v = s.split(":", 1)
+                names[int(k.strip())] = v.strip().strip("'\"")
+            elif section == "imgsz" and s.strip().startswith("-") and imgsz is None:
+                imgsz = int(s.strip()[1:].strip())
+    return names, imgsz
+
+
+class NcnnBackend:
+    """Runs an Ultralytics NCNN export with only the small `ncnn` package (no PyTorch).
+
+    Output 'out0' is (4 + num_classes, N): box cx, cy, w, h in input pixels, then class scores.
+    """
+
+    def __init__(self, model_dir):
+        import ncnn
+
+        self.ncnn = ncnn
+        self.names, meta_size = _read_metadata(model_dir)
+        self.size = meta_size or config.YOLO_IMGSZ
+        self.net = ncnn.Net()
+        self.net.opt.use_vulkan_compute = False
+        self.net.opt.num_threads = os.cpu_count() or 4
+        self.net.load_param(os.path.join(model_dir, "model.ncnn.param"))
+        self.net.load_model(os.path.join(model_dir, "model.ncnn.bin"))
+        wanted = {c.strip().lower() for c in config.FIRE_CLASSES.split(",") if c.strip()}
+        self.class_ids = [i for i, n in self.names.items() if n.lower() in wanted]
+        if not self.class_ids:
+            raise ValueError(f"model classes {self.names} contain none of FIRE_CLASSES={config.FIRE_CLASSES}")
+        print(f"[detector] NCNN model {model_dir} size={self.size} classes={self.names} "
+              f"using={[self.names[i] for i in self.class_ids]}")
+
+    def __call__(self, frame):
+        h, w = frame.shape[:2]
+        s = self.size
+        r = min(s / w, s / h)
+        nw, nh = int(round(w * r)), int(round(h * r))
+        px, py = (s - nw) // 2, (s - nh) // 2
+        canvas = np.full((s, s, 3), 114, np.uint8)
+        canvas[py : py + nh, px : px + nw] = cv2.resize(frame, (nw, nh), interpolation=cv2.INTER_LINEAR)
+        blob = np.ascontiguousarray(canvas[:, :, ::-1].transpose(2, 0, 1), dtype=np.float32) / 255.0
+
+        ex = self.net.create_extractor()
+        ex.input("in0", self.ncnn.Mat(blob))
+        _, out = ex.extract("out0")
+        out = np.array(out)  # (4 + nc, N)
+
+        scores = out[4:]
+        cls = scores.argmax(0)
+        conf = scores[cls, np.arange(scores.shape[1])]
+        keep = (conf >= config.FIRE_CONFIDENCE_THRESHOLD) & np.isin(cls, self.class_ids)
+        if not keep.any():
+            return []
+        cx, cy, bw, bh = out[:4, keep]
+        conf, cls = conf[keep], cls[keep]
+        x1 = (cx - bw / 2 - px) / r
+        y1 = (cy - bh / 2 - py) / r
+        boxes = np.stack([x1, y1, bw / r, bh / r], 1)
+        idx = cv2.dnn.NMSBoxes(boxes.tolist(), conf.tolist(), config.FIRE_CONFIDENCE_THRESHOLD, 0.45)
+        result = []
+        for i in np.array(idx).flatten():
+            x, y, bw_, bh_ = boxes[i]
+            x0, y0 = max(0, int(x)), max(0, int(y))
+            x1_, y1_ = min(w, int(x + bw_)), min(h, int(y + bh_))
+            result.append((x0, y0, x1_ - x0, y1_ - y0, round(float(conf[i]), 2), self.names[int(cls[i])]))
+        result.sort(key=lambda d: d[2] * d[3], reverse=True)
+        return result
+
+
 def load_backend():
     """Returns (name, detect_function)."""
     mode = config.DETECTOR
     if mode in ("auto", "yolo"):
+        if os.path.exists(os.path.join(config.YOLO_MODEL, "model.ncnn.param")):
+            try:  # lightweight path: ncnn only, no PyTorch
+                return "yolo", NcnnBackend(config.YOLO_MODEL)
+            except ImportError:
+                print("[detector] `ncnn` not installed; trying ultralytics")
+            except Exception as e:
+                print(f"[detector] NCNN load failed ({e}); trying ultralytics")
         if os.path.exists(config.YOLO_MODEL):
             try:
                 return "yolo", YoloBackend(config.YOLO_MODEL)
