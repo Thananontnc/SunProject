@@ -12,7 +12,9 @@ JPEG_QUALITY = int(os.getenv("JPEG_QUALITY", "75"))
 # CAMERA=synthetic forces the fake test video (no camera needed).
 CAMERA = os.getenv("CAMERA", "auto")
 # Rotate 180 if the camera is mounted upside down on the robot.
-ROTATE_180 = os.getenv("ROTATE_180", "0") == "1"
+# ROTATE=0/90/180/270 turns the picture clockwise (camera mounted sideways or upside down).
+# ROTATE_180=1 is the older setting and still works.
+ROTATE = int(os.getenv("ROTATE", "180" if os.getenv("ROTATE_180", "0") == "1" else "0")) % 360
 
 # Fire detection
 # DETECTOR: auto (YOLO if model file exists, else colour) | yolo | color

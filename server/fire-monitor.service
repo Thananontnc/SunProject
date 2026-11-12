@@ -2,7 +2,7 @@
 # Install (on the Pi):
 #   sudo cp ~/SunProject/server/fire-monitor.service /etc/systemd/system/
 #   sudo systemctl daemon-reload && sudo systemctl enable --now fire-monitor
-# Settings (e.g. SIMULATE=1, ROTATE_180=1): edit ~/SunProject/server/fire-monitor.env
+# Settings (e.g. SIMULATE=1, ROTATE=90): edit ~/SunProject/server/fire-monitor.env
 #   then: sudo systemctl restart fire-monitor
 # Logs: journalctl -u fire-monitor -f
 [Unit]

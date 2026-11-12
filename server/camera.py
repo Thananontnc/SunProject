@@ -7,6 +7,12 @@ import numpy as np
 
 import config
 
+_ROTATIONS = {
+    90: cv2.ROTATE_90_CLOCKWISE,
+    180: cv2.ROTATE_180,
+    270: cv2.ROTATE_90_COUNTERCLOCKWISE,
+}
+
 
 class Camera:
     def __init__(self):
@@ -58,8 +64,9 @@ class Camera:
                 return None
         else:
             frame = self._synthetic()
-        if config.ROTATE_180:
-            frame = cv2.rotate(frame, cv2.ROTATE_180)
+        rot = _ROTATIONS.get(config.ROTATE)
+        if rot is not None:
+            frame = cv2.rotate(frame, rot)
         return frame
 
     def _synthetic(self):
