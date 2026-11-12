@@ -143,9 +143,9 @@ Test it with a lighter or candle flame in front of the camera (be careful).
 
 ## Step 6: Water weight sensor 🔌 (Arduino + HX711)
 
-Full details: `arduino/water_tank/` and `docs/serial-protocol.md`.
+Full details: `arduino/water_tank/` and `docs/serial-protocol.md`. Relay, pump, buck converter and the tested wiring: `docs/WIRING.md`.
 
-1. Wiring: HX711 **DT → A2, SCK → A3, VCC → 5V, GND → GND**. Load cell: Red=E+, Black=E-, White=A-, Green=A+.
+1. Wiring: HX711 **DT → A2, SCK → A3, VCC → 5V, GND → GND** (with the relay on 5V, use **3.3V** for the HX711 and recalibrate; see `docs/WIRING.md`). Load cell: Red=E+, Black=E-, White=A-, Green=A+.
 2. Arduino IDE: open `arduino/water_tank/water_tank.ino`, choose Board **Arduino Uno** and the port, then click **Upload**.
 3. Open Serial Monitor at **115200** with **New Line**:
    - `C,SHOW` should show `sensor=OK` (if it shows `NO DATA`, check the wiring)
