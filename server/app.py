@@ -29,6 +29,16 @@ HISTORY_FILE = os.path.join(config.DATA_DIR, "history.json")
 os.makedirs(SNAP_DIR, exist_ok=True)
 
 app = Flask(__name__, static_folder=None)
+
+
+@app.after_request
+def allow_cors(resp):
+    # The phone app doesn't need this, but the app's web version (expo --web) runs on
+    # another origin, and without these headers the browser blocks every request.
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Cache-Control"
+    resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return resp
 lock = threading.Lock()
 frame_ready = threading.Condition(lock)
 
