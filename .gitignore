@@ -32,3 +32,5 @@ arduino/**/build/
 
 # Pi-specific server settings
 server/fire-monitor.env
+generated/
+my_photos/

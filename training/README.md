@@ -46,3 +46,19 @@ python train_fire.py
 - `training\fire_ncnn_model.zip` → copy to the Pi and unzip into `server/models/`. Restart the server.
   คัดลอกไฟล์นี้ไปที่ Pi แล้วแตกไฟล์ไว้ใน `server/models/` จากนั้นรีสตาร์ท server
 - Charts: `training\runs\fire\results.png`. / กราฟผลการเทรน
+
+## Auto train (one command) / เทรนอัตโนมัติคำสั่งเดียว
+```bat
+git pull
+python auto_train.py
+```
+About 3–5 hours on an RTX 4060. It downloads D-Fire, then generates two extra sets:
+- **small flames** (lighter or candle size, labelled as fire)
+- **printed/cartoon flames** on shirts, posters and screens (empty labels, so they are NOT fire)
+
+Then it trains for 100 epochs and prints how often printed fire gives a false alarm and how many small flames it finds. Finally it exports `fire_ncnn_model.zip` at 416 px.
+On the Pi: unzip it into `server/models/`, add `YOLO_IMGSZ=416` to `server/fire-monitor.env`, then run `sudo systemctl restart fire-monitor`.
+
+- Check that it runs first (about 10 min): `python auto_train.py --quick`
+- PC turned off? Continue with `python auto_train.py --resume`
+- Optional, better: put your own Pi camera photos in `training/my_photos/not_fire/` (fire shirt etc., no labelling needed) and/or a Roboflow export of real flames in `training/my_photos/fire/`. They are added automatically.
