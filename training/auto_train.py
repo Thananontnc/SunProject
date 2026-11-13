@@ -97,7 +97,7 @@ def load_bg(path, rnd, size=640):
 def paste_small_flame(bg, crop, rnd):
     h, w = bg.shape[:2]
     target_h = rnd.randint(14, max(16, h // 6))  # lighter / candle size
-    s = target_h / crop.shape[0]
+    s = min(target_h / crop.shape[0], (w // 4) / crop.shape[1])  # wide crops must still fit
     fw, fh = max(6, int(crop.shape[1] * s)), max(8, int(crop.shape[0] * s))
     fl = cv2.resize(crop, (fw, fh), interpolation=cv2.INTER_AREA).astype(np.float32)
     # soft oval mask so the paste has no hard rectangle edge
