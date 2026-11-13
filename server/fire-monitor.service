@@ -11,10 +11,10 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-User=thananon
-WorkingDirectory=/home/thananon/SunProject/server
-EnvironmentFile=-/home/thananon/SunProject/server/fire-monitor.env
-ExecStart=/home/thananon/venv/bin/python -u app.py
+User=pi
+WorkingDirectory=/home/pi/SunProject/server
+EnvironmentFile=-/home/pi/SunProject/server/fire-monitor.env
+ExecStart=/home/pi/venv/bin/python -u app.py
 Restart=always
 RestartSec=3
 

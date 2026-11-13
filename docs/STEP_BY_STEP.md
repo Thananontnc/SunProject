@@ -167,7 +167,7 @@ journalctl -u fire-monitor -f          # live log (Ctrl+C to exit)
 ```
 - The server now starts on boot and restarts itself if it crashes.
 - Settings go in `~/SunProject/server/fire-monitor.env` (see `fire-monitor.env.example`), followed by `sudo systemctl restart fire-monitor`.
-- The service file assumes the user `thananon` and the venv at `~/venv`. Edit `fire-monitor.service` if yours are different.
+- The service file assumes the user `pi` and the venv at `~/venv`. Edit `fire-monitor.service` if yours are different.
 
 ---
 
