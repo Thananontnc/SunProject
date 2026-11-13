@@ -247,7 +247,7 @@ def build_generated(train_dir, fire_id, n_small, n_fake, seed=0):
     print(f"[generate] done -> {GEN}")
 
 
-def add_my_photos(fire_id):
+def add_my_photos(names):
     """my_photos/not_fire/*.jpg -> empty labels. my_photos/fire -> Roboflow export (used as-is)."""
     dirs = {"train": [], "val": []}
     nf = os.path.join(MY, "not_fire")
@@ -267,14 +267,32 @@ def add_my_photos(fire_id):
             dirs[split].append(os.path.join(out, split, "images"))
     fire = os.path.join(MY, "fire")
     if os.path.isdir(fire):
-        names = tf.class_names(fire)
-        if names:
-            tf.remap_extra(fire, ["smoke", "fire"] if fire_id == 1 else ["fire"])
+        # Copy into generated/ with class ids rewritten; the original export is never changed.
+        # Any class name except "smoke" (fire, flame, lighter, candle...) counts as fire.
+        own = tf.class_names(fire) or ["fire"]
+        remap = {i: (names.index("smoke") if n.lower() == "smoke" and "smoke" in names else names.index("fire"))
+                 for i, n in enumerate(own)}
+        print(f"[my_photos] your classes {own} -> {remap}")
         for split, keys in (("train", ["train"]), ("val", ["valid", "val"])):
-            d = tf.find_split(fire, keys)
-            if d:
-                dirs[split].append(d)
-                print(f"[my_photos] fire {split}: {d}")
+            src = tf.find_split(fire, keys)
+            if not src:
+                continue
+            out = os.path.join(GEN, "my_fire", split, "images")
+            shutil.rmtree(os.path.dirname(out), ignore_errors=True)
+            os.makedirs(out)
+            os.makedirs(tf.labels_dir(out))
+            n_img = 0
+            for f in images_in(src):
+                shutil.copy(f, out)
+                lines = []
+                for c, *box in read_labels(f, src):
+                    if c in remap:
+                        lines.append(f"{remap[c]} " + " ".join(f"{v:.6f}" for v in box) + "\n")
+                stem = os.path.splitext(os.path.basename(f))[0]
+                open(os.path.join(tf.labels_dir(out), stem + ".txt"), "w").write("".join(lines))
+                n_img += 1
+            dirs[split].append(out)
+            print(f"[my_photos] {n_img} fire photos ({split})")
     return dirs
 
 
@@ -295,13 +313,14 @@ def false_alarm_report(model, imgsz, conf):
         return hits / len(files)
 
     print(f"\n=== Real-life check (conf {conf}, size {imgsz}) ===")
-    fa = hit_rate(fakes)
-    print(f"Printed/cartoon fire wrongly called fire: {fa:.1%}  (lower is better, aim < 5%)")
-    sm = hit_rate(smalls)
-    print(f"Small real flames found:                  {sm:.1%}  (higher is better, aim > 70%)")
-    my = hit_rate(my_nf)
-    if my is not None:
-        print(f"Your own not-fire photos called fire:     {my:.1%}")
+    for label, files, aim in (
+        ("Printed/cartoon fire wrongly called fire", fakes, "lower is better, aim < 5%"),
+        ("Small real flames found", smalls, "higher is better, aim > 70%"),
+        ("Your own not-fire photos called fire", my_nf, "lower is better"),
+    ):
+        rate = hit_rate(files)
+        if rate is not None:
+            print(f"{label + ':':<42} {rate:.1%}  ({aim})")
 
 
 def main():
@@ -340,7 +359,7 @@ def main():
         fire_id = names.index("fire")
 
         build_generated(data["train"], fire_id, a.small, a.fake)
-        mine = add_my_photos(fire_id)
+        mine = add_my_photos(names)
         data["train"] = [data["train"], os.path.join(GEN, "train", "images")] + mine["train"]
         data["val"] = [data["val"], os.path.join(GEN, "val", "images")] + mine["val"]
         yaml.safe_dump(data, open(tf.DATA_YAML, "w", encoding="utf-8"))
