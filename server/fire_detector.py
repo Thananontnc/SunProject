@@ -114,10 +114,11 @@ class NcnnBackend:
     Output 'out0' is (4 + num_classes, N): box cx, cy, w, h in input pixels, then class scores.
     """
 
-    def __init__(self, model_dir):
+    def __init__(self, model_dir, classes=None, conf=None):
         import ncnn
 
         self.ncnn = ncnn
+        self.conf = config.FIRE_CONFIDENCE_THRESHOLD if conf is None else conf
         self.names, meta_size = _read_metadata(model_dir)
         self.size = meta_size or config.YOLO_IMGSZ
         self.net = ncnn.Net()
@@ -125,10 +126,11 @@ class NcnnBackend:
         self.net.opt.num_threads = os.cpu_count() or 4
         self.net.load_param(os.path.join(model_dir, "model.ncnn.param"))
         self.net.load_model(os.path.join(model_dir, "model.ncnn.bin"))
-        wanted = {c.strip().lower() for c in config.FIRE_CLASSES.split(",") if c.strip()}
+        classes = classes or config.FIRE_CLASSES
+        wanted = {c.strip().lower() for c in classes.split(",") if c.strip()}
         self.class_ids = [i for i, n in self.names.items() if n.lower() in wanted]
         if not self.class_ids:
-            raise ValueError(f"model classes {self.names} contain none of FIRE_CLASSES={config.FIRE_CLASSES}")
+            raise ValueError(f"model classes {self.names} contain none of {classes}")
         print(f"[detector] NCNN model {model_dir} size={self.size} classes={self.names} "
               f"using={[self.names[i] for i in self.class_ids]}")
 
@@ -150,7 +152,7 @@ class NcnnBackend:
         scores = out[4:]
         cls = scores.argmax(0)
         conf = scores[cls, np.arange(scores.shape[1])]
-        keep = (conf >= config.FIRE_CONFIDENCE_THRESHOLD) & np.isin(cls, self.class_ids)
+        keep = (conf >= self.conf) & np.isin(cls, self.class_ids)
         if not keep.any():
             return []
         cx, cy, bw, bh = out[:4, keep]
@@ -158,7 +160,7 @@ class NcnnBackend:
         x1 = (cx - bw / 2 - px) / r
         y1 = (cy - bh / 2 - py) / r
         boxes = np.stack([x1, y1, bw / r, bh / r], 1)
-        idx = cv2.dnn.NMSBoxes(boxes.tolist(), conf.tolist(), config.FIRE_CONFIDENCE_THRESHOLD, 0.45)
+        idx = cv2.dnn.NMSBoxes(boxes.tolist(), conf.tolist(), self.conf, 0.45)
         result = []
         for i in np.array(idx).flatten():
             x, y, bw_, bh_ = boxes[i]
@@ -202,7 +204,11 @@ class AsyncDetector:
         self._cv = threading.Condition()
         self._frame = None
         self.result = []
+        self.rejected = []  # boxes the fake-fire filter threw away (drawn grey)
         self.result_id = 0
+        import fire_filter  # here, not at the top: fire_filter imports this module
+
+        self._filter = fire_filter.FireFilter() if config.FAKE_FIRE_FILTER and self.name == "yolo" else None
         self.infer_ms = 0.0
         threading.Thread(target=self._run, daemon=True).start()
 
@@ -214,6 +220,10 @@ class AsyncDetector:
     def latest(self):
         with self._cv:
             return self.result, self.result_id
+
+    def latest_rejected(self):
+        with self._cv:
+            return self.rejected
 
     def _run(self):
         while True:
@@ -227,8 +237,15 @@ class AsyncDetector:
                 print(f"[detector] error: {e}")
                 dets = []
             dets = [d for d in dets if d[4] >= config.FIRE_CONFIDENCE_THRESHOLD]
+            rejected = []
+            if self._filter:
+                try:
+                    dets, rejected = self._filter(frame, dets)
+                except Exception as e:
+                    print(f"[filter] error: {e}")
             with self._cv:
                 self.result = dets
+                self.rejected = rejected
                 self.result_id += 1
                 self.infer_ms = round((time.time() - t0) * 1000, 1)
 

@@ -197,7 +197,7 @@ def camera_loop():
                 hit_streak, miss_streak = hit_streak + 1, 0
             else:
                 hit_streak, miss_streak = 0, miss_streak + 1
-        fire_detector.draw(frame, dets)
+        fire_detector.draw(frame, dets + detector.latest_rejected())
         ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, config.JPEG_QUALITY])
 
         now = time.time()
