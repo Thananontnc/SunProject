@@ -5,7 +5,8 @@ Two checks, no retraining needed:
 1. Flicker: a real flame changes shape and brightness all the time. A printed flame looks the
    same in every frame (it only moves with the person). Each fire box is tracked over the last
    few detector results; the "flicker score" is how much the inside of the box changes
-   (mean pixel difference, 0-255, of a small grey copy of the box). Too still = not fire.
+   (difference of a small, contrast-normalised grey copy of the box, after the best small
+   shift so hand shake doesn't count). Too still = not fire.
 2. Person: a small COCO YOLO model finds people. If the fire box sits on a person's body
    (shirt area), it needs a much higher flicker score. A lighter held in a hand still flickers
    enough; a shirt print doesn't.
@@ -27,7 +28,8 @@ import numpy as np
 import config
 import fire_detector
 
-CROP = 24  # the box is shrunk to 24x24 grey before comparing frames
+CROP = 28   # the box is shrunk to 28x28 grey before comparing frames
+SHIFT = 3   # try small shifts so hand shake / box jitter doesn't count as flicker
 
 
 def _iou(a, b):
@@ -45,7 +47,23 @@ def _crop(gray, box):
     patch = gray[max(0, y):y + max(1, h), max(0, x):x + max(1, w)]
     if patch.size == 0:
         return None
-    return cv2.resize(patch, (CROP, CROP), interpolation=cv2.INTER_AREA).astype(np.int16)
+    c = cv2.resize(patch, (CROP, CROP), interpolation=cv2.INTER_AREA).astype(np.float32)
+    # Normalise contrast so the camera's auto-brightness doesn't count as flicker.
+    return (c - c.mean()) / (c.std() + 8.0) * 40.0
+
+
+def _change(a, b):
+    """How different two crops are after the best small shift (0 = identical).
+
+    A printed flame that moves a little lines up again after shifting; a real flame
+    has changed shape, so no shift makes it match."""
+    best = None
+    core = b[SHIFT:CROP - SHIFT, SHIFT:CROP - SHIFT]
+    for dy in range(-SHIFT, SHIFT + 1):
+        for dx in range(-SHIFT, SHIFT + 1):
+            d = float(np.abs(a[SHIFT + dy:CROP - SHIFT + dy, SHIFT + dx:CROP - SHIFT + dx] - core).mean())
+            best = d if best is None else min(best, d)
+    return best
 
 
 class _Track:
@@ -55,7 +73,7 @@ class _Track:
 
     def update(self, box, crop, now):
         if crop is not None and self.last_crop is not None:
-            self.diffs.append(float(np.abs(crop - self.last_crop).mean()))
+            self.diffs.append(_change(self.last_crop, crop))
         self.box, self.last_crop, self.seen = box, crop, now
 
     def score(self):
